@@ -164,13 +164,9 @@ faq_translation_system/
 4. Push to the branch
 5. Create a Pull Request
 
-## 📄 License
-
-MIT License
-
 ## 🆘 Support
 
-For issues, please open a GitHub issue or contact support@example.com
+For issues, please open a GitHub issue or contact astha24verma@gmail.com
 
 ## 📊 Performance Tips
 
