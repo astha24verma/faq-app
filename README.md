@@ -91,11 +91,14 @@ python manage.py createsuperuser
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET    | `/api/faqs/` | List all FAQs |
-| POST   | `/api/faqs/` | Create new FAQ |
-| GET    | `/api/faqs/{id}/` | Retrieve specific FAQ |
-| PUT    | `/api/faqs/{id}/` | Update FAQ |
+| GET | `/api/faqs/` | List all FAQs |
+| GET | `/api/faqs/?lang={lang}` | List FAQs in specific language |
+| POST | `/api/faqs/` | Create new FAQ |
+| GET | `/api/faqs/{id}/` | Get specific FAQ |
+| GET | `/api/faqs/{id}/?lang={lang}` | Get FAQ in specific language |
+| PUT | `/api/faqs/{id}/` | Update FAQ |
 | DELETE | `/api/faqs/{id}/` | Delete FAQ |
+| GET | `/api/faqs/available-languages/` | List supported languages |
 
 ### Query Parameters
 - `lang`: Specify language (e.g., `?lang=hi`)
