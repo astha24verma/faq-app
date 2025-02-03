@@ -5,3 +5,7 @@ googletrans==3.1.0a0
 django-ckeditor-5==0.2.10
 redis
 python-dotenv
+pytest==7.4.4
+pytest-django==4.7.0
+pytest-cov==4.1.0
+flake8==7.0.0

@@ -2,8 +2,6 @@ from django.db import models
 from django_ckeditor_5.fields import CKEditor5Field
 from googletrans import Translator, LANGUAGES
 from django_redis import get_redis_connection
-from django.utils.html import strip_tags
-import json
 
 class FAQ(models.Model):
     question = models.TextField(

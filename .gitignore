@@ -6,3 +6,25 @@ redis_data/
 # Django
 venv/
 static/
+
+.pytest_cache/
+.DS_Store
+.coverage
+.mypy_cache/
+.pytest_cache/
+.pytest_runner/
+__pycache__/
+
+# Database
+db.sqlite3
+
+# Python cache files
+*.py[cod]
+*$py.class
+*.pyc
+
+# Django migrations cache
+*/migrations/__pycache__/
+
+# Old test files
+faqApp/tests.py

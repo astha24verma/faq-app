@@ -10,8 +10,11 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from googletrans import LANGUAGES
 from django_redis import get_redis_connection
+import logging
 
 # Create your views here.
+
+logger = logging.getLogger(__name__)
 
 class FAQViewSet(viewsets.ModelViewSet):
     queryset = FAQ.objects.all()
@@ -33,8 +36,17 @@ class FAQViewSet(viewsets.ModelViewSet):
         
         return queryset
 
-    def get_cache_key(self, lang):
-        return f'faq_list_{lang}'
+    def get_cache_key(self, key_type, **kwargs):
+        if key_type == 'list':
+            return f"{settings.CACHE_KEY_PREFIX}list_{kwargs.get('lang', 'en')}"
+        elif key_type == 'detail':
+            return f"{settings.CACHE_KEY_PREFIX}detail_{kwargs['pk']}_{kwargs.get('lang', 'en')}"
+        return None
+
+    def invalidate_cache(self):
+        keys = cache.keys(f"{settings.CACHE_KEY_PREFIX}*")
+        if keys:
+            cache.delete_many(keys)
 
     @action(detail=False, methods=['get'])
     def available_languages(self, request):
@@ -74,21 +86,13 @@ class FAQViewSet(viewsets.ModelViewSet):
         return Response(data)
 
     def list(self, request, *args, **kwargs):
-        """List FAQs with optional language parameter"""
         lang = request.query_params.get('lang', 'en')
-        cache_key = self.get_cache_key(lang)
-
-        cached_data = self.redis_client.get(cache_key)
+        cache_key = self.get_cache_key('list', lang=lang)
+        
+        cached_data = cache.get(cache_key)
         if cached_data:
-            return Response(json.loads(cached_data))
-
-        # Debug Redis connection
-        try:
-            test_value = self.redis_client.get('test_key')
-            print(f"Redis test: {test_value}")
-        except Exception as e:
-            print(f"Redis error: {e}")
-
+            return Response(cached_data)
+        
         queryset = self.get_queryset()
         serializer = self.serializer_class(
             queryset, 
@@ -96,38 +100,73 @@ class FAQViewSet(viewsets.ModelViewSet):
             context={'language': lang}
         )
         data = serializer.data
-        self.redis_client.set(cache_key, json.dumps(data), ex=3600)
+        
+        cache.set(cache_key, data, timeout=settings.CACHE_TTL)
         return Response(data)
 
     def retrieve(self, request, *args, **kwargs):
         """Get single FAQ with optional language parameter"""
         lang = request.query_params.get('lang', 'en')
         instance = self.get_object()
-        cache_key = f'faq_detail_{instance.id}_{lang}'
+        cache_key = self.get_cache_key('detail', pk=instance.id, lang=lang)
 
-        cached_data = self.redis_client.get(cache_key)
+        cached_data = cache.get(cache_key)
         if cached_data:
-            return Response(json.loads(cached_data))
+            return Response(cached_data)
 
         serializer = self.serializer_class(
             instance,
             context={'language': lang}
         )
         data = serializer.data
-        self.redis_client.set(cache_key, json.dumps(data), ex=3600)
+        cache.set(cache_key, data, timeout=settings.CACHE_TTL)
         return Response(data)
 
     def create(self, request, *args, **kwargs):
-        response = super().create(request, *args, **kwargs)
-        cache.delete_pattern(f"{settings.CACHE_KEY_PREFIX}*")
-        return response
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        self.invalidate_cache()
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=201, headers=headers)
 
     def update(self, request, *args, **kwargs):
         response = super().update(request, *args, **kwargs)
-        cache.delete_pattern(f"{settings.CACHE_KEY_PREFIX}*")
+        self.invalidate_cache()
         return response
 
     def destroy(self, request, *args, **kwargs):
         response = super().destroy(request, *args, **kwargs)
-        cache.delete_pattern(f"{settings.CACHE_KEY_PREFIX}*")
+        self.invalidate_cache()
         return response
+
+    @action(detail=False, methods=['get'])
+    def test_redis(self, request):
+        """Test Redis connection and caching"""
+        test_key = 'test_redis_connection'
+        test_value = 'test_value'
+        
+        try:
+            # Test basic connection
+            self.redis_client.ping()
+            
+            # Test setting value
+            self.redis_client.set(test_key, test_value)
+            
+            # Test getting value
+            retrieved_value = self.redis_client.get(test_key)
+            
+            # Get all keys for debugging
+            all_keys = self.redis_client.keys('*')
+            
+            return Response({
+                'status': 'success',
+                'connection': 'active',
+                'test_value_retrieved': retrieved_value,
+                'all_keys': all_keys
+            })
+        except Exception as e:
+            return Response({
+                'status': 'error',
+                'error': str(e)
+            }, status=500)
