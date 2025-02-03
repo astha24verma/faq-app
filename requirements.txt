@@ -1,0 +1,7 @@
+Django
+djangorestframework
+django-redis
+googletrans==3.1.0a0
+django-ckeditor-5==0.2.10
+redis
+python-dotenv

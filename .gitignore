@@ -1,0 +1,8 @@
+# Redis
+dump.rdb
+*.rdb
+redis_data/ 
+
+# Django
+venv/
+static/
